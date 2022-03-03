@@ -1,4 +1,6 @@
-import { line as pathLine, area as pathArea } from './d';
+import { ring } from '../renderer/shape';
+import { dist, sub, equal } from '../utils';
+import { line as pathLine, area as pathArea, sector as pathSector } from './d';
 import { contour } from './primitive';
 
 export function circle(renderer, coordinate, {
@@ -54,4 +56,33 @@ export function area(renderer, coordinate, {
     return contour(renderer, { points, ...styles });
   }
   return renderer.path({ d: pathArea(points), ...styles });
+}
+
+export function rect(renderer, coordinate, {
+  x1, y1, x2, y2, ...styles
+}) {
+  const v0 = [x1, y1];
+  const v1 = [x2, y1];
+  const v2 = [x2, y2];
+  const v3 = [x1, y2];
+  const vs = coordinate.isTranspose() ? [v3, v0, v1, v2] : [v0, v1, v2, v3];
+  const ps = vs.map(coordinate);
+  const [p0, p1, p2, p3] = ps;
+  if (!coordinate.isPolar()) {
+    const [width, height] = sub(p2, p0);
+    const [x, y] = p0;
+    return renderer.rect({
+      x, y, width, height, ...styles,
+    });
+  }
+  const center = coordinate.center();
+  const [cx, cy] = center;
+  if (!(equal(p0, p1) && equal(p2, p3))) {
+    return renderer.path({ d: pathSector([center, ...ps]), ...styles });
+  }
+  const r1 = dist(center, p2);
+  const r2 = dist(center, p0);
+  return ring(renderer, {
+    cx, cy, r1, r2, ...styles,
+  });
 }
